@@ -5,6 +5,7 @@
 
 ; *********************************************************************************************
 ; TODO
+;       > store cursor location as row/col instead of pixel, calculate location to print
 ;       > use space bar to enable/disable cell 8x8
 ;       > use 'p' to pause/unpause simulation
 ;       > add flag for which cell pointer is to be used
