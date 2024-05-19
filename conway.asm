@@ -145,11 +145,7 @@ cursor_clr:
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
-                    MBB     cursor_row, yd
-clr_a_inc_ya:       ABZ     cell_size, ya
-                    DEB     yd
-                    CPI     0x00
-                    BNE     clr_a_inc_ya
+                    JAS     inc_ya
 cur_clr_a:
                     JPS     _ClearPixel
                     INZ     ya
@@ -167,11 +163,7 @@ cur_clr_b:
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
-                    MBB     cursor_row, yd
-clr_c_inc_ya:       ABZ     cell_size, ya
-                    DEB     yd
-                    CPI     0x00
-                    BNE     clr_c_inc_ya
+                    JAS     inc_ya
 cur_clr_c:
                     JPS     _ClearPixel
                     INV     xa
@@ -198,11 +190,7 @@ cursor_set:
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
-                    MBB     cursor_row, yd
-set_a_inc_ya:       ABZ     cell_size, ya
-                    DEB     yd
-                    CPI     0x00
-                    BNE     set_a_inc_ya
+                    JAS     inc_ya
 cur_set_a:
                     JPS     _SetPixel
                     INZ     ya
@@ -220,11 +208,7 @@ cur_set_b:
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
-                    MBB     cursor_row, yd
-set_c_inc_ya:       ABZ     cell_size, ya
-                    DEB     yd
-                    CPI     0x00
-                    BNE     set_c_inc_ya
+                    JAS     inc_ya
 cur_set_c:
                     JPS     _SetPixel
                     INV     xa
@@ -239,6 +223,14 @@ cur_set_d:
                     BLE     cur_set_d
 
 cursor_done:        RTS
+
+inc_ya:
+                    MBB     cursor_row, yd
+loop_inc_ya:        ABZ     cell_size, ya
+                    DEB     yd
+                    CPI     0x00
+                    BNE     loop_inc_ya
+                    RTS
 
 ; *********************************************************************************************
 ; draw the cells subroutine : draw cell content and do the ant logic
