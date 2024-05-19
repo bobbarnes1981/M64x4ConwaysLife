@@ -69,6 +69,11 @@ show_steps:         MIB     0x00, _XPos                             ; set print 
                     JAS     _PrintHex                               ; print MSB
                     LDB     step_count                              ;
                     JAS     _PrintHex                               ; print LSB
+
+                    LDB     cursor_col
+                    JAS     _PrintHex
+                    LDB     cursor_row
+                    JAS     _PrintHex
                     
                     ; check for exit
 
@@ -253,18 +258,26 @@ cursor_done:        RTS
 
 inc_ya:
                     MBB     cursor_row, yd
-loop_inc_ya:        ABZ     cell_size, ya
-                    DEB     yd
+loop_inc_ya:
+                    LDB     yd
                     CPI     0x00
-                    BNE     loop_inc_ya
+                    BEQ     done_inc_ya
+                    DEB     yd
+                    ABZ     cell_size, ya
+                    JPA     loop_inc_ya
+done_inc_ya:
                     RTS
 
 inc_xa:
                     MBB     cursor_col, xd
-loop_inc_xa:        ABV     cell_size, xa
-                    DEB     xd
+loop_inc_xa:
+                    LDB     xd
                     CPI     0x00
-                    BNE     loop_inc_xa
+                    BEQ     done_inc_xa
+                    DEB     xd
+                    ABV     cell_size, xa
+                    JPA     loop_inc_xa
+done_inc_xa:
                     RTS
 
 ; *********************************************************************************************
@@ -273,7 +286,7 @@ loop_inc_xa:        ABV     cell_size, xa
 
 process_cells:
                     MIW     0x1100, cella_pointer
-                    MIW     0x14c0, cella_pointer
+                    MIW     0x14c0, cellb_pointer
                     MIB     0x00, yc
 proc_row_loop:
                     MIB     0x00, xc
@@ -327,8 +340,15 @@ proc_3:             SBW     num_cols, tmp_pointer
                     INB     neighbours
 proc_end:
 
-                    ; TODO: check rule/state
-                    ; TODO: assign state to cellb_pointer
+                    LDB     neighbours
+                    
+                    CIB     0x00, neighbours
+                    ; TODO: check number of neighbours
+                    ; TODO: assign state to cellb_pointer base on number of neighbours
+                    BEQ     proc_endloop
+                    MIR     0x81, cellb_pointer ; just make all neihgbours with one cell become alive
+
+proc_endloop:
 
                     ; end of col loop
 
@@ -345,7 +365,35 @@ proc_end:
                     CBB     yc, num_rows                            ;
                     BNE     proc_row_loop                           ; continue loop
 
-                    ; TODO: swap b into a?
+                    JAS     swap
+
+                    RTS
+
+swap:
+
+                    MIW     0x1100, cella_pointer
+                    MIW     0x14c0, cellb_pointer
+                    MIB     0x00, yc
+swap_row_loop:
+                    MIB     0x00, xc
+swap_col_loop:
+                    LDR     cellb_pointer
+                    STR     cella_pointer
+
+                    ; end of col loop
+
+                    INW     cella_pointer                           ;
+                    INW     cellb_pointer                           ;
+
+                    INB     xc                                      ;
+                    CBB     xc, num_cols                            ;
+                    BNE     swap_col_loop                           ; continue loop
+
+                    ; end of row loop
+
+                    INB     yc                                      ;
+                    CBB     yc, num_rows                            ;
+                    BNE     swap_row_loop                           ; continue loop
 
                     RTS
 
