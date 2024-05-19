@@ -40,10 +40,10 @@
                     MIW     0x1100, cella_pointer                   ; init cella pointer
                     MIW     0x14c0, cellb_pointer                   ; init cellb pointer
 
-                    MIW     0x00C7, cursor_x                        ; cursor at x=200 pixels
-                    MIB     0x77, cursor_y                          ; curosr at y=120 pixels
+                    MIW     0x00C7, cursor_x                        ; cursor at x=199 pixels
+                    MIB     0x0b, cursor_row                        ; cursor at row=11
                     MIW     0x00c8, cursor_x2                       ; cursor at x=200 pixels
-                    MIB     0x78, cursor_y2                         ; curosr at y=120 pixels
+                    MIB     0x0c, cursor_row2                       ; cursor at row=12
 
                     JAS     _Clear                                  ; clear display
 
@@ -75,44 +75,45 @@ show_steps:         MIB     0x00, _XPos                             ; set print 
                     ; check for exit
 
                     JAS     _ReadInput                              ; read serial/ps2 input
+                    STB     in
 
                     ; exit (escape)
 
-                    CPI     0x1b
+                    CIB     0x1b, in
                     BEQ     exit
 
                     ; up 0xe1, dn 0xe2, lt 0xe3, rt 0xe4, spc 0x20
 
-check_up:           CPI     0xe1
+check_up:           CIB     0xe1, in
                     BNE     check_dn
-                    JAS     cursor_up
+                    DEB     cursor_row2
 
-check_dn:           CPI     0xe2
+check_dn:           CIB     0xe2, in
                     BNE     check_lt
-                    JAS     cursor_dn
+                    INB     cursor_row2
 
-check_lt:           CPI     0xe3
+check_lt:           CIB     0xe3, in
                     BNE     check_rt
-                    JAS     cursor_lt
+                    SBW     cell_size, cursor_x2
 
-check_rt:           CPI     0xe4
+check_rt:           CIB     0xe4, in
                     BNE     check_sp
-                    JAS     cursor_rt
+                    ABW     cell_size, cursor_x2
 
-check_sp:           CPI     0x20
+check_sp:           CIB     0x20, in
                     BNE     check_st
-                    JAS     cursor_sp
+                    ; TODO: toggle current cell
 
-check_st:           CPI     0x0a
+check_st:           CIB     0x0a, in
                     BNE     check_run
-                    JAS     start_sim
+                    MIB     0x01, running
 
 check_run:          CIB     0x00, running
                     BEQ     end_loop
 
                     INW     step_count                              ; increment steps
 
-                    JAS     process_grid
+                    ; TODO: process grid?
 
                     ; end of loop
 
@@ -125,73 +126,30 @@ exit:               MIB     0x00, _XPos                             ; set print 
                     JPA     _Prompt                                 ; hand controll back to prompt
 
 ; *********************************************************************************************
-; up
-; *********************************************************************************************
-
-cursor_up:          SBB     cell_size, cursor_y2
-                    RTS
-
-; *********************************************************************************************
-; down
-; *********************************************************************************************
-
-cursor_dn:          ABB     cell_size, cursor_y2
-                    RTS
-
-; *********************************************************************************************
-; left
-; *********************************************************************************************
-
-cursor_lt:          SBW     cell_size, cursor_x2
-                    RTS
-
-; *********************************************************************************************
-; right
-; *********************************************************************************************
-
-cursor_rt:          ABW     cell_size, cursor_x2
-                    RTS
-
-; *********************************************************************************************
-; toggle cell
-; *********************************************************************************************
-
-cursor_sp:
-                    ; convert cursor_x to memory address
-                    ; convert cursor_y to memory address
-                    MIW 0x1100, tmp_pointer
-                    ; increment by num_cols * cursor_x/cell_size times
-                    ; increment by cursor_y/cell_size
-
-                    RTS
-
-; *********************************************************************************************
-; process grid
-; *********************************************************************************************
-
-process_grid:
-                    RTS
-
-; *********************************************************************************************
 ; draw cursor
 ; *********************************************************************************************
 
 cursor_draw:
-                    CBB     cursor_y, cursor_y2
+                    CBB     cursor_row, cursor_row2
                     BNE     cursor_clr
                     CBB     cursor_x+1, cursor_x2+1
                     BNE     cursor_clr
                     CBB     cursor_x, cursor_x2
                     BNE     cursor_clr
-                    JPA     cursor_done
+                    RTS
 
                     ; remove old cursor
 
 cursor_clr:
                     MWV     cursor_x, xa
                     CLZ     yc
-                    MBZ     cursor_y, ya
+                    MIZ     0x00, ya
                     CLZ     xc
+                    MBB     cursor_row, yd
+clr_a_inc_ya:       ABZ     cell_size, ya
+                    DEB     yd
+                    CPI     0x00
+                    BNE     clr_a_inc_ya
 cur_clr_a:
                     JPS     _ClearPixel
                     INZ     ya
@@ -207,8 +165,13 @@ cur_clr_b:
 
                     MWV     cursor_x, xa
                     CLZ     yc
-                    MBZ     cursor_y, ya
+                    MIZ     0x00, ya
                     CLZ     xc
+                    MBB     cursor_row, yd
+clr_c_inc_ya:       ABZ     cell_size, ya
+                    DEB     yd
+                    CPI     0x00
+                    BNE     clr_c_inc_ya
 cur_clr_c:
                     JPS     _ClearPixel
                     INV     xa
@@ -224,7 +187,7 @@ cur_clr_d:
 
                     ; move cursor
 
-                    MBB     cursor_y2, cursor_y
+                    MBB     cursor_row2, cursor_row
                     MBB     cursor_x2+1, cursor_x+1
                     MBB     cursor_x2, cursor_x
 
@@ -233,8 +196,13 @@ cur_clr_d:
 cursor_set:
                     MWV     cursor_x, xa
                     CLZ     yc
-                    MBZ     cursor_y, ya
+                    MIZ     0x00, ya
                     CLZ     xc
+                    MBB     cursor_row, yd
+set_a_inc_ya:       ABZ     cell_size, ya
+                    DEB     yd
+                    CPI     0x00
+                    BNE     set_a_inc_ya
 cur_set_a:
                     JPS     _SetPixel
                     INZ     ya
@@ -250,8 +218,13 @@ cur_set_b:
 
                     MWV     cursor_x, xa
                     CLZ     yc
-                    MBZ     cursor_y, ya
+                    MIZ     0x00, ya
                     CLZ     xc
+                    MBB     cursor_row, yd
+set_c_inc_ya:       ABZ     cell_size, ya
+                    DEB     yd
+                    CPI     0x00
+                    BNE     set_c_inc_ya
 cur_set_c:
                     JPS     _SetPixel
                     INV     xa
@@ -266,13 +239,6 @@ cur_set_d:
                     BLE     cur_set_d
 
 cursor_done:        RTS
-
-; *********************************************************************************************
-; start sim
-; *********************************************************************************************
-
-start_sim:          MIB     0x01, running
-                    RTS
 
 ; *********************************************************************************************
 ; draw the cells subroutine : draw cell content and do the ant logic
@@ -376,8 +342,11 @@ clear_col_loop: MIR 0x00, cella_pointer
 
 #org 0x0000
 
+in:                 0xff                                            ;
 xc:                 0xff                                            ;
 yc:                 0xff                                            ;
+xd:                 0xff                                            ;
+yd:                 0xff                                            ;
 tmp_pointer:        0xffff                                          ;
 
 #org 0x1000
@@ -387,9 +356,9 @@ screen_w:           0xffff                                          ;
 screen_h:           0xff                                            ;
 
 cursor_x:           0xffff                                          ;
-cursor_y:           0xff                                            ;
+cursor_row:         0xff                                            ;
 cursor_x2:          0xffff                                          ;
-cursor_y2:          0xff                                            ;
+cursor_row2:        0xff                                            ;
 
 current_x:          0xffff                                          ;
 current_y:          0xff                                            ;
