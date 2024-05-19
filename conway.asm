@@ -5,8 +5,6 @@
 
 ; *********************************************************************************************
 ; TODO
-;       > store cursor location as row/col instead of pixel, calculate location to print
-;       > use space bar to enable/disable cell 8x8
 ;       > use 'p' to pause/unpause simulation
 ;       > add flag for which cell pointer is to be used
 ;       > loop through all cells in screen (increment cell pointer and alt cell pointer)
@@ -40,9 +38,9 @@
                     MIW     0x1100, cella_pointer                   ; init cella pointer
                     MIW     0x14c0, cellb_pointer                   ; init cellb pointer
 
-                    MIW     0x00C7, cursor_x                        ; cursor at x=199 pixels
+                    MIB     0x13, cursor_col                        ; cursor at col=19
                     MIB     0x0b, cursor_row                        ; cursor at row=11
-                    MIW     0x00c8, cursor_x2                       ; cursor at x=200 pixels
+                    MIB     0x14, cursor_col2                       ; cursor at col=20
                     MIB     0x0c, cursor_row2                       ; cursor at row=12
 
                     JAS     _Clear                                  ; clear display
@@ -94,15 +92,43 @@ check_dn:           CIB     0xe2, in
 
 check_lt:           CIB     0xe3, in
                     BNE     check_rt
-                    SBW     cell_size, cursor_x2
+                    DEB     cursor_col2
 
 check_rt:           CIB     0xe4, in
                     BNE     check_sp
-                    ABW     cell_size, cursor_x2
+                    INB     cursor_col2
 
 check_sp:           CIB     0x20, in
                     BNE     check_st
-                    ; TODO: toggle current cell
+                    ; toggle the current cursor cell
+                    MIW     0x1100, tmp_pointer                     ; initialise pointer for cells ram
+                    MBB     cursor_row, yd
+                    MBB     cursor_col, xd
+find_y_loop:
+                    CIB     0x00, yd
+                    BEQ     found_y_loop
+                    DEB     yd
+                    ABV     num_cols, tmp_pointer
+                    JPA     find_y_loop
+found_y_loop:
+find_x_loop:
+                    CIB     0x00, xd
+                    BEQ     found_x_loop
+                    DEB     xd
+                    INW     tmp_pointer
+                    JPA     find_x_loop
+found_x_loop:
+
+
+found_cell:
+                    LDR     tmp_pointer
+                    ANI     0x01
+                    CPI     0x01
+                    BEQ     cell_0
+                    MIR     0x81, tmp_pointer                       ; set cell as white/dirty
+                    JPA     cell_done
+cell_0:             MIR     0x80, tmp_pointer                       ; set cell as black/dirty
+cell_done:
 
 check_st:           CIB     0x0a, in
                     BNE     check_run
@@ -132,20 +158,19 @@ exit:               MIB     0x00, _XPos                             ; set print 
 cursor_draw:
                     CBB     cursor_row, cursor_row2
                     BNE     cursor_clr
-                    CBB     cursor_x+1, cursor_x2+1
-                    BNE     cursor_clr
-                    CBB     cursor_x, cursor_x2
+                    CBB     cursor_col, cursor_col2
                     BNE     cursor_clr
                     RTS
 
                     ; remove old cursor
 
 cursor_clr:
-                    MWV     cursor_x, xa
+                    MIV     0x0000, xa
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
                     JAS     inc_ya
+                    JAS     inc_xa
 cur_clr_a:
                     JPS     _ClearPixel
                     INZ     ya
@@ -159,11 +184,12 @@ cur_clr_b:
                     CBZ     cell_size, xc
                     BLE     cur_clr_b
 
-                    MWV     cursor_x, xa
+                    MIV     0x0000, xa
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
                     JAS     inc_ya
+                    JAS     inc_xa
 cur_clr_c:
                     JPS     _ClearPixel
                     INV     xa
@@ -180,17 +206,17 @@ cur_clr_d:
                     ; move cursor
 
                     MBB     cursor_row2, cursor_row
-                    MBB     cursor_x2+1, cursor_x+1
-                    MBB     cursor_x2, cursor_x
+                    MBB     cursor_col2, cursor_col
 
                     ; draw new cursor
 
 cursor_set:
-                    MWV     cursor_x, xa
+                    MIV     0x0000, xa
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
                     JAS     inc_ya
+                    JAS     inc_xa
 cur_set_a:
                     JPS     _SetPixel
                     INZ     ya
@@ -204,11 +230,12 @@ cur_set_b:
                     CBZ     cell_size, xc
                     BLE     cur_set_b
 
-                    MWV     cursor_x, xa
+                    MIV     0x0000, xa
                     CLZ     yc
                     MIZ     0x00, ya
                     CLZ     xc
                     JAS     inc_ya
+                    JAS     inc_xa
 cur_set_c:
                     JPS     _SetPixel
                     INV     xa
@@ -232,6 +259,14 @@ loop_inc_ya:        ABZ     cell_size, ya
                     BNE     loop_inc_ya
                     RTS
 
+inc_xa:
+                    MBB     cursor_col, xd
+loop_inc_xa:        ABV     cell_size, xa
+                    DEB     xd
+                    CPI     0x00
+                    BNE     loop_inc_xa
+                    RTS
+
 ; *********************************************************************************************
 ; draw the cells subroutine : draw cell content and do the ant logic
 ; *********************************************************************************************
@@ -250,16 +285,18 @@ cell_col_loop:
                 ; check cell pointer for cell colour
 
                 LDR cella_pointer                               ; load cell info byte
-                CPI 0x00                                        ; check if zero
-                BEQ dontprocess                                 ;
+                ANI 0x80                                        ; check if 'dirty' using bit 7
+                CPI 0x80                                        ;
+                BNE dontprocess                                 ;
 
-cell_white:
+                LDR cella_pointer                               ;
+                ANI 0x7F                                        ; disable bit 7
+                STR cella_pointer                               ;
+                STB current_info                                ;
                 JAS fill_cell                                   ; set cell black
 
-process:
-                INW cella_pointer                               ; increment cell address (pointer to cell info bytes)
-
 dontprocess:
+                INW cella_pointer                               ; increment cell address (pointer to cell info bytes)
 
                 ; end of col loop
 
@@ -282,10 +319,12 @@ dontprocess:
 ; *********************************************************************************************
 
 fill_cell:      MWV current_x, xa                               ; copy x to pixel x
-                CLZ xc                                          ; reset x counter
+                INV xa
+                MIZ 0x01, xc                                          ; reset x counter
 fill_loop_x:    MBZ current_y, ya                               ; copy y to pixel y
-                CLZ yc                                          ; reset y counter
-fill_loop_y:    LDR cella_pointer                               ; load cell info byte
+                INZ ya
+                MIZ 0x01, yc                                          ; reset y counter
+fill_loop_y:    LDB current_info                                ; load cell info byte
                 CPI 0x00                                        ; check if zero
                 BEQ fill_black                                  ; if byte is zero black else white
 
@@ -347,13 +386,14 @@ cell_size:          0xff                                            ;
 screen_w:           0xffff                                          ;
 screen_h:           0xff                                            ;
 
-cursor_x:           0xffff                                          ;
+cursor_col:         0xff                                            ;
 cursor_row:         0xff                                            ;
-cursor_x2:          0xffff                                          ;
+cursor_col2:        0xff                                            ;
 cursor_row2:        0xff                                            ;
 
 current_x:          0xffff                                          ;
 current_y:          0xff                                            ;
+current_info:       0xff                                            ;
 
 cella_pointer:      0xffff                                          ;
 cellb_pointer:      0xffff                                          ;
