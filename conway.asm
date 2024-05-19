@@ -73,78 +73,78 @@ show_steps:         MIB     0x00, _XPos                             ; set print 
                     ; check for exit
 
                     JAS     _ReadInput                              ; read serial/ps2 input
-                    STB     in
+                    STB     in                                      ;
 
                     ; exit (escape)
 
-                    CIB     0x1b, in
-                    BEQ     exit
+                    CIB     0x1b, in                                ;
+                    BEQ     exit                                    ;
 
                     ; up 0xe1, dn 0xe2, lt 0xe3, rt 0xe4, spc 0x20
 
-check_up:           CIB     0xe1, in
-                    BNE     check_dn
-                    DEB     cursor_row2
+check_up:           CIB     0xe1, in                                ;
+                    BNE     check_dn                                ;
+                    DEB     cursor_row2                             ;
 
-check_dn:           CIB     0xe2, in
-                    BNE     check_lt
-                    INB     cursor_row2
+check_dn:           CIB     0xe2, in                                ;
+                    BNE     check_lt                                ;
+                    INB     cursor_row2                             ;
 
-check_lt:           CIB     0xe3, in
-                    BNE     check_rt
-                    DEB     cursor_col2
+check_lt:           CIB     0xe3, in                                ;
+                    BNE     check_rt                                ;
+                    DEB     cursor_col2                             ;
 
-check_rt:           CIB     0xe4, in
-                    BNE     check_sp
-                    INB     cursor_col2
+check_rt:           CIB     0xe4, in                                ;
+                    BNE     check_sp                                ;
+                    INB     cursor_col2                             ;
 
-check_sp:           CIB     0x20, in
-                    BNE     check_st
+check_sp:           CIB     0x20, in                                ;
+                    BNE     check_st                                ;
                     ; toggle the current cursor cell
                     MIW     0x1100, tmp_pointer                     ; initialise pointer for cells ram
-                    MBB     cursor_row, yd
-                    MBB     cursor_col, xd
+                    MBB     cursor_row, yd                          ;
+                    MBB     cursor_col, xd                          ;
 find_y_loop:
-                    CIB     0x00, yd
-                    BEQ     found_y_loop
-                    DEB     yd
-                    ABV     num_cols, tmp_pointer
-                    JPA     find_y_loop
+                    CIB     0x00, yd                                ;
+                    BEQ     found_y_loop                            ;
+                    DEB     yd                                      ;
+                    ABV     num_cols, tmp_pointer                   ;
+                    JPA     find_y_loop                             ;
 found_y_loop:
 find_x_loop:
-                    CIB     0x00, xd
-                    BEQ     found_x_loop
-                    DEB     xd
-                    INW     tmp_pointer
-                    JPA     find_x_loop
+                    CIB     0x00, xd                                ;
+                    BEQ     found_x_loop                            ;
+                    DEB     xd                                      ;
+                    INW     tmp_pointer                             ;
+                    JPA     find_x_loop                             ;
 found_x_loop:
 
 
 found_cell:
-                    LDR     tmp_pointer
-                    ANI     0x01
-                    CPI     0x01
-                    BEQ     cell_0
+                    LDR     tmp_pointer                             ;
+                    ANI     0x01                                    ;
+                    CPI     0x01                                    ;
+                    BEQ     cell_0                                  ;
                     MIR     0x81, tmp_pointer                       ; set cell as white/dirty
                     JPA     cell_done
 cell_0:             MIR     0x80, tmp_pointer                       ; set cell as black/dirty
 cell_done:
 
-check_st:           CIB     0x0a, in
-                    BNE     check_run
-                    MIB     0x01, running
+check_st:           CIB     0x0a, in                                ;
+                    BNE     check_run                               ;
+                    MIB     0x01, running                           ;
 
-check_run:          CIB     0x00, running
-                    BEQ     end_loop
+check_run:          CIB     0x00, running                           ;
+                    BEQ     end_loop                                ;
 
                     INW     step_count                              ; increment steps
 
-                    ; TODO: process grid?
+                    JAS     process_cells                           ;
 
                     ; end of loop
 
 end_loop:
-                    JAS     cursor_draw
+                    JAS     cursor_draw                             ;
                     JPA     loop                                    ; continue loop
 
 exit:               MIB     0x00, _XPos                             ; set print to x=0
@@ -268,102 +268,184 @@ loop_inc_xa:        ABV     cell_size, xa
                     RTS
 
 ; *********************************************************************************************
-; draw the cells subroutine : draw cell content and do the ant logic
+; process the cells
 ; *********************************************************************************************
 
-draw_cells:     MIW 0x1100, cella_pointer                       ; current cell array address
-                CLB current_y                                   ; start at y 0
+process_cells:
+                    MIW     0x1100, cella_pointer
+                    MIW     0x14c0, cella_pointer
+                    MIB     0x00, yc
+proc_row_loop:
+                    MIB     0x00, xc
+proc_col_loop:
+                    ; check all 8 neighbours in cella_pointer addresses
+                    ; 0 1 2
+                    ; 3|4|5
+                    ; 6 7 8
+                    MIB     0x00, neighbours
+                    MWV     cella_pointer, tmp_pointer
 
-                ; start of row loop
+                    ; cell 1
+                    SBW     num_cols, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_0
+                    INB     neighbours
+                    ; cell 0
+proc_0:             SIW     0x01, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_2
+                    INB     neighbours
+                    ; cell 2
+proc_2:             AIW     0x02, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_5
+                    INB     neighbours
+                    ; cell 5
+proc_5:             ABW     num_cols, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_8
+                    INB     neighbours
+                    ; cell 8
+proc_8:             ABW     num_cols, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_7
+                    INB     neighbours
+                    ; cell 7
+proc_7:             SIW     0x01, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_6
+                    INB     neighbours
+                    ; cell 6
+proc_6:             SIW     0x01, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_3
+                    INB     neighbours
+                    ; cell 3
+proc_3:             SBW     num_cols, tmp_pointer
+                    CIR     0x01, tmp_pointer
+                    BNE     proc_end
+                    INB     neighbours
+proc_end:
 
-cell_row_loop:  CLW current_x                                   ; start at x 0
+                    ; TODO: check rule/state
+                    ; TODO: assign state to cellb_pointer
 
-                ; start of col loop
+                    ; end of col loop
+
+                    INW     cella_pointer                           ;
+                    INW     cellb_pointer                           ;
+
+                    INB     xc                                      ;
+                    CBB     xc, num_cols                            ;
+                    BNE     proc_col_loop                           ; continue loop
+
+                    ; end of row loop
+
+                    INB     yc                                      ;
+                    CBB     yc, num_rows                            ;
+                    BNE     proc_row_loop                           ; continue loop
+
+                    ; TODO: swap b into a?
+
+                    RTS
+
+; *********************************************************************************************
+; draw the cells subroutine
+; *********************************************************************************************
+
+draw_cells:         MIW     0x1100, cella_pointer                   ; current cell array address
+                    CLB     current_y                               ; start at y 0
+
+                    ; start of row loop
+
+cell_row_loop:      CLW     current_x                               ; start at x 0
+
+                    ; start of col loop
 
 cell_col_loop:
 
-                ; check cell pointer for cell colour
+                    ; check cell pointer for cell colour
 
-                LDR cella_pointer                               ; load cell info byte
-                ANI 0x80                                        ; check if 'dirty' using bit 7
-                CPI 0x80                                        ;
-                BNE dontprocess                                 ;
+                    LDR     cella_pointer                           ; load cell info byte
+                    ANI     0x80                                    ; check if 'dirty' using bit 7
+                    CPI     0x80                                    ;
+                    BNE     dontprocess                             ;
 
-                LDR cella_pointer                               ;
-                ANI 0x7F                                        ; disable bit 7
-                STR cella_pointer                               ;
-                STB current_info                                ;
-                JAS fill_cell                                   ; set cell black
+                    LDR     cella_pointer                           ;
+                    ANI     0x7F                                    ; disable bit 7
+                    STR     cella_pointer                           ;
+                    STB     current_info                            ;
+                    JAS     fill_cell                               ; set cell black
 
 dontprocess:
-                INW cella_pointer                               ; increment cell address (pointer to cell info bytes)
+                    INW     cella_pointer                           ; increment cell address (pointer to cell info bytes)
 
-                ; end of col loop
+                    ; end of col loop
 
-                ABW cell_size, current_x                        ; increment current_x by cell_size
-                CBB screen_w+1, current_x+1                     ; compare MSB to screen_w MSB
-                BNE cell_col_loop                               ; continue loop
-                CBB screen_w, current_x                         ; compare LSB to screen_w LSB
-                BNE cell_col_loop                               ; continue loop
+                    ABW     cell_size, current_x                    ; increment current_x by cell_size
+                    CBB     screen_w+1, current_x+1                 ; compare MSB to screen_w MSB
+                    BNE     cell_col_loop                           ; continue loop
+                    CBB     screen_w, current_x                     ; compare LSB to screen_w LSB
+                    BNE     cell_col_loop                           ; continue loop
 
-                ; end of row loop
+                    ; end of row loop
 
-                ABB cell_size, current_y                        ; increment current_y by cell_size
-                CBB screen_h, current_y                         ; compare to screen_h
-                BNE cell_row_loop                               ; continue loop
+                    ABB     cell_size, current_y                    ; increment current_y by cell_size
+                    CBB     screen_h, current_y                     ; compare to screen_h
+                    BNE     cell_row_loop                           ; continue loop
 
-                RTS                                             ;
+                    RTS                                             ;
 
 ; *********************************************************************************************
 ; fill a cell
 ; *********************************************************************************************
 
-fill_cell:      MWV current_x, xa                               ; copy x to pixel x
-                INV xa
-                MIZ 0x01, xc                                          ; reset x counter
-fill_loop_x:    MBZ current_y, ya                               ; copy y to pixel y
-                INZ ya
-                MIZ 0x01, yc                                          ; reset y counter
-fill_loop_y:    LDB current_info                                ; load cell info byte
-                CPI 0x00                                        ; check if zero
-                BEQ fill_black                                  ; if byte is zero black else white
+fill_cell:          MWV     current_x, xa                           ; copy x to pixel x
+                    INV     xa
+                    MIZ     0x01, xc                                ; reset x counter
+fill_loop_x:        MBZ     current_y, ya                           ; copy y to pixel y
+                    INZ     ya
+                    MIZ     0x01, yc                                ; reset y counter
+fill_loop_y:        LDB     current_info                            ; load cell info byte
+                    CPI     0x00                                    ; check if zero
+                    BEQ     fill_black                              ; if byte is zero black else white
 
-fill_white:     JPS _SetPixel                                   ; set pixel
-                JPA fill_loop_end                               ; jump to end of loop
-fill_black:     JPS _ClearPixel                                 ; clear pixel
+fill_white:         JPS     _SetPixel                               ; set pixel
+                    JPA     fill_loop_end                           ; jump to end of loop
+fill_black:         JPS     _ClearPixel                             ; clear pixel
 
-fill_loop_end:  INZ yc                                          ; increment y counter
-                INZ ya                                          ; increment y pixel
-                CBZ cell_size, yc                               ; check if reached cell_size
-                BNE fill_loop_y                                 ; continue loop
-                INZ xc                                          ; increment x counter
-                INV xa                                          ; increment x pixel
-                CBZ cell_size, xc                               ; check if reached cell_size
-                BNE fill_loop_x                                 ; continue loop
+fill_loop_end:      INZ     yc                                      ; increment y counter
+                    INZ     ya                                      ; increment y pixel
+                    CBZ     cell_size, yc                           ; check if reached cell_size
+                    BNE     fill_loop_y                             ; continue loop
+                    INZ     xc                                      ; increment x counter
+                    INV     xa                                      ; increment x pixel
+                    CBZ     cell_size, xc                           ; check if reached cell_size
+                    BNE     fill_loop_x                             ; continue loop
 
-fill_done:      RTS                                             ; return
+fill_done:          RTS                                             ; return
 
 ; *********************************************************************************************
 ; clear the memory to hold the cells
 ; *********************************************************************************************
 
-clear_cells:    MIW 0x1100, cella_pointer
-                MIW 0x14c0, cellb_pointer
-                CLB current_y
-clear_row_loop: CLW current_x
-clear_col_loop: MIR 0x00, cella_pointer
-                MIR 0x00, cellb_pointer
-                INW cella_pointer
-                INW cellb_pointer
-                ABW cell_size, current_x
-                CBB screen_w+1, current_x+1
-                BNE clear_col_loop
-                CBB screen_w, current_x
-                BNE clear_col_loop
-                ABB cell_size, current_y
-                CBB screen_h, current_y
-                BNE clear_row_loop
-                RTS
+clear_cells:        MIW     0x1100, cella_pointer
+                    MIW     0x14c0, cellb_pointer
+                    CLB     current_y
+clear_row_loop:     CLW     current_x
+clear_col_loop:     MIR     0x00, cella_pointer
+                    MIR     0x00, cellb_pointer
+                    INW     cella_pointer
+                    INW     cellb_pointer
+                    ABW     cell_size, current_x
+                    CBB     screen_w+1, current_x+1
+                    BNE     clear_col_loop
+                    CBB     screen_w, current_x
+                    BNE     clear_col_loop
+                    ABB     cell_size, current_y
+                    CBB     screen_h, current_y
+                    BNE     clear_row_loop
+                    RTS
 
 ; *********************************************************************************************
 ; Data
@@ -379,6 +461,7 @@ yc:                 0xff                                            ;
 xd:                 0xff                                            ;
 yd:                 0xff                                            ;
 tmp_pointer:        0xffff                                          ;
+neighbours:         0xff                                            ;
 
 #org 0x1000
 
