@@ -6,7 +6,6 @@
 ; *********************************************************************************************
 ; TODO
 ;       > use space bar to enable/disable cell 8x8
-;       > draw the grid state
 ;       > use 'p' to pause/unpause simulation
 ;       > add flag for which cell pointer is to be used
 ;       > loop through all cells in screen (increment cell pointer and alt cell pointer)
@@ -58,6 +57,7 @@
                     ; main loop
 
 loop:
+                    JAS     draw_cells                              ;
 
                     ; show step counter
 
@@ -263,6 +263,77 @@ cursor_done:        RTS
 
 start_sim:          MIB     0x01, running
                     RTS
+; *********************************************************************************************
+; draw the cells subroutine : draw cell content and do the ant logic
+; *********************************************************************************************
+
+draw_cells:     MIW 0x1100, cella_pointer                       ; current cell array address
+                CLB current_y                                   ; start at y 0
+
+                ; start of row loop
+
+cell_row_loop:  CLW current_x                                   ; start at x 0
+
+                ; start of col loop
+
+cell_col_loop:
+
+                ; check cell pointer for cell colour
+
+                LDR cella_pointer                               ; load cell info byte
+                CPI 0x00                                        ; check if zero
+                BEQ dontprocess                                 ;
+
+cell_white:
+                JAS fill_cell                                   ; set cell black
+
+process:
+                INW cella_pointer                               ; increment cell address (pointer to cell info bytes)
+
+dontprocess:
+
+                ; end of col loop
+
+                ABW cell_size, current_x                        ; increment current_x by cell_size
+                CBB screen_w+1, current_x+1                     ; compare MSB to screen_w MSB
+                BNE cell_col_loop                               ; continue loop
+                CBB screen_w, current_x                         ; compare LSB to screen_w LSB
+                BNE cell_col_loop                               ; continue loop
+
+                ; end of row loop
+
+                ABB cell_size, current_y                        ; increment current_y by cell_size
+                CBB screen_h, current_y                         ; compare to screen_h
+                BNE cell_row_loop                               ; continue loop
+
+                RTS                                             ;
+
+; *********************************************************************************************
+; fill a cell
+; *********************************************************************************************
+
+fill_cell:      MWV current_x, xa                               ; copy x to pixel x
+                CLZ xc                                          ; reset x counter
+fill_loop_x:    MBZ current_y, ya                               ; copy y to pixel y
+                CLZ yc                                          ; reset y counter
+fill_loop_y:    LDR cella_pointer                               ; load cell info byte
+                CPI 0x00                                        ; check if zero
+                BEQ fill_black                                  ; if byte is zero black else white
+
+fill_white:     JPS _SetPixel                                   ; set pixel
+                JPA fill_loop_end                               ; jump to end of loop
+fill_black:     JPS _ClearPixel                                 ; clear pixel
+
+fill_loop_end:  INZ yc                                          ; increment y counter
+                INZ ya                                          ; increment y pixel
+                CBZ cell_size, yc                               ; check if reached cell_size
+                BNE fill_loop_y                                 ; continue loop
+                INZ xc                                          ; increment x counter
+                INV xa                                          ; increment x pixel
+                CBZ cell_size, xc                               ; check if reached cell_size
+                BNE fill_loop_x                                 ; continue loop
+
+fill_done:      RTS                                             ; return
 
 ; *********************************************************************************************
 ; clear the memory to hold the cells
