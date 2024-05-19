@@ -37,8 +37,8 @@
                     MIW     0x1100, cella_pointer                   ; init cella pointer
                     MIW     0x14c0, cellb_pointer                   ; init cellb pointer
 
-                    MIW     0x0000, cursor_x                        ; cursor at x=200 pixels
-                    MIB     0x00, cursor_y                          ; curosr at y=120 pixels
+                    MIW     0x00C7, cursor_x                        ; cursor at x=200 pixels
+                    MIB     0x77, cursor_y                          ; curosr at y=120 pixels
                     MIW     0x00c8, cursor_x2                       ; cursor at x=200 pixels
                     MIB     0x78, cursor_y2                         ; curosr at y=120 pixels
 
@@ -193,7 +193,7 @@ cur_clr_b:
                     INV     xa
                     INZ     xc
                     CBZ     cell_size, xc
-                    BNE     cur_clr_b
+                    BLE     cur_clr_b
 
                     MWV     cursor_x, xa
                     CLZ     yc
@@ -210,7 +210,7 @@ cur_clr_d:
                     INZ     ya
                     INZ     yc
                     CBZ     cell_size, yc
-                    BNE     cur_clr_d
+                    BLE     cur_clr_d
 
                     ; move cursor
 
@@ -236,7 +236,7 @@ cur_set_b:
                     INV     xa
                     INZ     xc
                     CBZ     cell_size, xc
-                    BNE     cur_set_b
+                    BLE     cur_set_b
 
                     MWV     cursor_x, xa
                     CLZ     yc
@@ -253,7 +253,7 @@ cur_set_d:
                     INZ     ya
                     INZ     yc
                     CBZ     cell_size, yc
-                    BNE     cur_set_d
+                    BLE     cur_set_d
 
 cursor_done:        RTS
 
