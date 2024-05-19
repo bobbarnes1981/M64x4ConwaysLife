@@ -29,6 +29,9 @@
                     MIW     0x0190, screen_w                        ; 0x0190 (400)
                     MIB     0xf0, screen_h                          ; 0xf0 (240)
 
+                    MIB     0x28, num_cols                          ; 40
+                    MIB     0x18, num_rows                          ; 24
+
                     MIB     0x0a, cell_size                         ; cell size is 10 pixels 40x24
 
                     JAS     clear_cells                             ;
@@ -152,14 +155,20 @@ cursor_rt:          ABW     cell_size, cursor_x2
 ; toggle cell
 ; *********************************************************************************************
 
-cursor_sp:          
+cursor_sp:
+                    ; convert cursor_x to memory address
+                    ; convert cursor_y to memory address
+                    MIW 0x1100, tmp_pointer
+                    ; increment by num_cols * cursor_x/cell_size times
+                    ; increment by cursor_y/cell_size
+
                     RTS
 
 ; *********************************************************************************************
 ; process grid
 ; *********************************************************************************************
 
-process_grid:       
+process_grid:
                     RTS
 
 ; *********************************************************************************************
@@ -263,6 +272,7 @@ cursor_done:        RTS
 
 start_sim:          MIB     0x01, running
                     RTS
+
 ; *********************************************************************************************
 ; draw the cells subroutine : draw cell content and do the ant logic
 ; *********************************************************************************************
@@ -367,6 +377,7 @@ clear_col_loop: MIR 0x00, cella_pointer
 
 xc:                 0xff                                            ;
 yc:                 0xff                                            ;
+tmp_pointer:        0xffff                                          ;
 
 #org 0x1000
 
@@ -388,6 +399,9 @@ cellb_pointer:      0xffff                                          ;
 step_count:         0xffff                                          ;
 
 running:            0xff                                            ;
+
+num_cols:           0xff                                            ;
+num_rows:           0xff                                            ;
 
 #org 0x1100     cells_a: ;40x24 cells
 #org 0x14c0     cells_b: ;40x24 cells
