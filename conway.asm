@@ -6,12 +6,7 @@
 ; *********************************************************************************************
 ; TODO
 ;       > use 'p' to pause/unpause simulation
-;       > add flag for which cell pointer is to be used
-;       > loop through all cells in screen (increment cell pointer and alt cell pointer)
-;       > check neighbours using offsets in cell pointer
-;       > update cell state in alternative cell pointer
-;       > update cell on screen
-;       > update flag to correct cell pointer
+;       > implement conway's rules
 ; *********************************************************************************************
 
 ; *********************************************************************************************
@@ -346,7 +341,7 @@ proc_end:
                     ; TODO: check number of neighbours
                     ; TODO: assign state to cellb_pointer base on number of neighbours
                     BEQ     proc_endloop
-                    MIR     0x81, cellb_pointer ; just make all neihgbours with one cell become alive
+                    MIR     0x81, cellb_pointer ; just make all neihgbours with one+ cell become alive
 
 proc_endloop:
 
