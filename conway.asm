@@ -10,6 +10,7 @@
 ; *********************************************************************************************
 ; TODO
 ;       > don't check neighbours when out of bounds
+;       > fix unintentional screen wrapping
 ;       > use 'p' to pause/unpause simulation
 ;       > performance improvements
 ;       > code clean up
