@@ -2,13 +2,15 @@
 
 An implementation of conway's life for Minimal 64x4
 
-\<esc\>    exit
+\<esc\> exit
 
-\<space\>  toggle cell
+\<space\> toggle cell
 
-\<enter\>  start simulation
+\<enter\> start simulation
 
-'r'      reset
+'r' reset
+
+arrow keys move cursor
 
 # Screenshot
 
