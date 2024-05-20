@@ -9,3 +9,7 @@ An implementation of conway's life for Minimal 64x4
 \<enter\>  start simulation
 
 'r'      reset
+
+# Screenshot
+
+![screenshot](./PXL_20240520_113430774.jpg)

@@ -9,6 +9,7 @@
 
 ; *********************************************************************************************
 ; TODO
+;       > cursor seems to run much slower on real hardware than on emulator
 ;       > don't check neighbours when out of bounds
 ;       > fix unintentional screen wrapping
 ;       > use 'p' to pause/unpause simulation
@@ -544,7 +545,7 @@ cell_col_loop:
                     BNE     dontprocess                             ;
 
                     LDR     cella_pointer                           ;
-                    ANI     0x7F                                    ; disable bit 7
+                    ANI     0x7f                                    ; disable bit 7
                     STR     cella_pointer                           ;
                     STB     current_info                            ;
                     JAS     fill_cell                               ; set cell black
