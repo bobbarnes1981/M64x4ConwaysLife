@@ -5,8 +5,11 @@
 
 ; *********************************************************************************************
 ; TODO
+;       > don't check neighbours when out of bounds
 ;       > use 'p' to pause/unpause simulation
-;       > implement conway's rules
+;       > performance improvements
+;       > code clean up
+;       > comments
 ; *********************************************************************************************
 
 ; *********************************************************************************************
@@ -39,6 +42,13 @@
                     MIB     0x0c, cursor_row2                       ; cursor at row=12
 
                     JAS     _Clear                                  ; clear display
+
+                    ; Glider
+                    MIB     0x81, 0x127c
+                    MIB     0x81, 0x12a5
+                    MIB     0x81, 0x12cd
+                    MIB     0x81, 0x12cc
+                    MIB     0x81, 0x12cb
 
                     MIB     0x00, current_y                         ; init current x
                     MIW     0x0000, current_x                       ; init current y
@@ -286,6 +296,7 @@ process_cells:
 proc_row_loop:
                     MIB     0x00, xc
 proc_col_loop:
+                    ; TODO: don't check neighbour when out of bounds
                     ; check all 8 neighbours in cella_pointer addresses
                     ; 0 1 2
                     ; 3|4|5
@@ -294,7 +305,7 @@ proc_col_loop:
                     MWV     cella_pointer, tmp_pointer
 
                     ; cell 1
-                    SBW     num_cols, tmp_pointer
+proc_1:             SBW     num_cols, tmp_pointer
                     CIR     0x01, tmp_pointer
                     BNE     proc_0
                     INB     neighbours
@@ -335,13 +346,96 @@ proc_3:             SBW     num_cols, tmp_pointer
                     INB     neighbours
 proc_end:
 
+                    LDR     cella_pointer
+                    CPI     0x01
+                    BEQ     check_live
+
+check_dead:
                     LDB     neighbours
-                    
-                    CIB     0x00, neighbours
-                    ; TODO: check number of neighbours
-                    ; TODO: assign state to cellb_pointer base on number of neighbours
-                    BEQ     proc_endloop
-                    MIR     0x81, cellb_pointer ; just make all neihgbours with one+ cell become alive
+
+chk_dead_0:         CIB     0x00, neighbours
+                    BNE     chk_dead_1
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_1:         CIB     0x01, neighbours
+                    BNE     chk_dead_2
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_2:         CIB     0x02, neighbours
+                    BNE     chk_dead_3
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_3:         CIB     0x03, neighbours
+                    BNE     chk_dead_4
+                    MIR     0x01, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_4:         CIB     0x04, neighbours
+                    BNE     chk_dead_5
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_5:         CIB     0x05, neighbours
+                    BNE     chk_dead_6
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_6:         CIB     0x06, neighbours
+                    BNE     chk_dead_7
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_dead_7:         CIB     0x07, neighbours
+                    BNE     chk_end
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+check_live:
+                    LDB     neighbours
+
+chk_live_0:         CIB     0x00, neighbours
+                    BNE     chk_live_1
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_1:         CIB     0x01, neighbours
+                    BNE     chk_live_2
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_2:         CIB     0x02, neighbours
+                    BNE     chk_live_3
+                    MIR     0x01, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_3:         CIB     0x03, neighbours
+                    BNE     chk_live_4
+                    MIR     0x01, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_4:         CIB     0x04, neighbours
+                    BNE     chk_live_5
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_5:         CIB     0x05, neighbours
+                    BNE     chk_live_6
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_6:         CIB     0x06, neighbours
+                    BNE     chk_live_7
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+
+chk_live_7:         CIB     0x07, neighbours
+                    BNE     chk_end
+                    MIR     0x00, cellb_pointer
+                    JPA     proc_endloop
+chk_end:
 
 proc_endloop:
 
@@ -373,8 +467,11 @@ swap_row_loop:
                     MIB     0x00, xc
 swap_col_loop:
                     LDR     cellb_pointer
+                    CPR     cella_pointer
+                    BEQ     swap_skip
+                    ORI     0x80                                    ; enable dirty bit 7
                     STR     cella_pointer
-
+swap_skip:
                     ; end of col loop
 
                     INW     cella_pointer                           ;
