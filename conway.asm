@@ -97,18 +97,28 @@ show_steps:         MIB     0x00, _XPos                             ; set print 
 
 check_up:           CIB     0xe1, in                                ;
                     BNE     check_dn                                ;
+                    CIB     0x00, cursor_row2                       ;
+                    BEQ     check_dn                                ;
                     DEB     cursor_row2                             ;
 
 check_dn:           CIB     0xe2, in                                ;
                     BNE     check_lt                                ;
+                    CBB     num_rows, cursor_row2                   ;
+                    ADI     0x01                                    ;
+                    BEQ     check_lt                                ;
                     INB     cursor_row2                             ;
 
 check_lt:           CIB     0xe3, in                                ;
                     BNE     check_rt                                ;
+                    CIB     0x00, cursor_col2                       ;
+                    BEQ     check_rt                                ;
                     DEB     cursor_col2                             ;
 
 check_rt:           CIB     0xe4, in                                ;
                     BNE     check_sp                                ;
+                    CBB     num_cols, cursor_col2                   ;
+                    ADI     0x01                                    ;
+                    BEQ     check_sp                                ;
                     INB     cursor_col2                             ;
 
 check_sp:           CIB     0x20, in                                ;
