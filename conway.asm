@@ -155,19 +155,22 @@ cell_done:
 
 check_st:           CIB     0x0a, in                                ;
                     BNE     check_run                               ;
+                    JAS     cursor_clr                              ;
                     MIB     0x01, running                           ;
 
 check_run:          CIB     0x00, running                           ;
-                    BEQ     end_loop                                ;
+                    BEQ     not_running                             ;
 
-                    INW     step_count                              ; increment steps
-
+is_running:         INW     step_count                              ; increment steps
                     JAS     process_cells                           ;
+                    JPA     end_loop
+
+not_running:        JAS     cursor_draw                             ;
+                    JPA     end_loop                                ;
 
                     ; end of loop
 
 end_loop:
-                    JAS     cursor_draw                             ;
                     JPA     loop                                    ; continue loop
 
 exit:               MIB     0x00, _XPos                             ; set print to x=0
@@ -180,10 +183,18 @@ exit:               MIB     0x00, _XPos                             ; set print 
 
 cursor_draw:
                     CBB     cursor_row, cursor_row2
-                    BNE     cursor_clr
+                    BNE     cursor_draw2
                     CBB     cursor_col, cursor_col2
-                    BNE     cursor_clr
+                    BNE     cursor_draw2
                     RTS
+
+cursor_draw2:
+                    JAS     cursor_clr
+                    MBB     cursor_row2, cursor_row
+                    MBB     cursor_col2, cursor_col
+                    JAS     cursor_set
+
+cursor_done:        RTS
 
                     ; remove old cursor
 
@@ -226,10 +237,7 @@ cur_clr_d:
                     CBZ     cell_size, yc
                     BLE     cur_clr_d
 
-                    ; move cursor
-
-                    MBB     cursor_row2, cursor_row
-                    MBB     cursor_col2, cursor_col
+                    RTS
 
                     ; draw new cursor
 
@@ -272,7 +280,9 @@ cur_set_d:
                     CBZ     cell_size, yc
                     BLE     cur_set_d
 
-cursor_done:        RTS
+                    RTS
+
+                    ; inc ya
 
 inc_ya:
                     MBB     cursor_row, yd
@@ -285,6 +295,8 @@ loop_inc_ya:
                     JPA     loop_inc_ya
 done_inc_ya:
                     RTS
+
+                    ; inc xa
 
 inc_xa:
                     MBB     cursor_col, xd
