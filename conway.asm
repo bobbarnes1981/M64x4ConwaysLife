@@ -4,6 +4,7 @@
 ;       <esc>    exit
 ;       <space>  toggle cell
 ;       <enter>  start simulation
+;       'r'      reset
 ; *********************************************************************************************
 
 ; *********************************************************************************************
@@ -23,7 +24,7 @@
 
                     ; initialise
 
-                    MIB     0x00, running                           ;
+reset:              MIB     0x00, running                           ;
                     MIW     0x0000, step_count                      ;
 
                     MIW     0x0190, screen_w                        ; 0x0190 (400)
@@ -92,6 +93,11 @@ show_steps:         MIB     0x00, _XPos                             ; set print 
 
                     CIB     0x1b, in                                ;
                     BEQ     exit                                    ;
+
+                    ; reset
+
+                    CIB     "r", in                                 ;
+                    BEQ     reset                                   ;
 
                     ; up 0xe1, dn 0xe2, lt 0xe3, rt 0xe4, spc 0x20
 
